@@ -10,17 +10,18 @@
 Summary:   Color daemon
 Name:      colord
 Version:   1.4.5
-Release:   4%{?dist}
+Release:   6%{?dist}
 License:   GPLv2+ and LGPLv2+
 URL:       https://www.freedesktop.org/software/colord/
 Source0:   https://www.freedesktop.org/software/colord/releases/%{name}-%{version}.tar.xz
+Source1:   colord.sysusers
 
 BuildRequires: dbus-devel
 BuildRequires: libxslt
 BuildRequires: docbook5-style-xsl
 BuildRequires: gettext
 BuildRequires: glib2-devel
-BuildRequires: systemd-devel
+BuildRequires: systemd-devel, systemd-rpm-macros
 BuildRequires: lcms2-devel >= 2.6
 BuildRequires: libgudev1-devel
 BuildRequires: polkit-devel >= 0.103
@@ -44,7 +45,7 @@ BuildRequires: dbus-devel
 Requires: color-filesystem
 BuildRequires: systemd
 %{?systemd_requires}
-Requires(pre): shadow-utils
+%{?sysusers_requires_compat}
 Requires: colord-libs%{?_isa} = %{version}-%{release}
 
 # Self-obsoletes to fix the multilib upgrade path
@@ -130,6 +131,7 @@ ulimit -Sv 2000000
 
 %install
 %meson_install
+install -Dpm 0644 %{SOURCE1} %{buildroot}%{_sysusersdir}/colord.conf
 
 # databases
 touch $RPM_BUILD_ROOT%{_localstatedir}/lib/colord/mapping.db
@@ -138,11 +140,7 @@ touch $RPM_BUILD_ROOT%{_localstatedir}/lib/colord/storage.db
 %find_lang %{name}
 
 %pre
-getent group colord >/dev/null || groupadd -r colord
-getent passwd colord >/dev/null || \
-    useradd -r -g colord -d /var/lib/colord -s /sbin/nologin \
-    -c "User for colord" colord
-exit 0
+%sysusers_create_compat %{SOURCE1}
 
 %post
 %systemd_post colord.service
@@ -177,6 +175,7 @@ exit 0
 %{_libdir}/colord-plugins
 %ghost %attr(-,colord,colord) %{_localstatedir}/lib/colord/*.db
 %{_unitdir}/colord.service
+%{_sysusersdir}/colord.conf
 
 # session helper
 %{_libexecdir}/colord-session
@@ -256,6 +255,12 @@ exit 0
 %{_datadir}/installed-tests/colord/*
 
 %changelog
+* Mon Mar 03 2025 Richard Hughes <rhughes@redhat.com> 1.4.5-6
+- Rebuild
+
+* Tue Feb 25 2025 Richard Hughes <rhughes@redhat.com> 1.4.5-5
+- Provide a sysusers.d file
+
 * Mon Aug 09 2021 Mohan Boddu <mboddu@redhat.com> - 1.4.5-4
 - Rebuilt for IMA sigs, glibc 2.34, aarch64 flags
   Related: rhbz#1991688
